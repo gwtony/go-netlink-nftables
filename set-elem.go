@@ -19,11 +19,7 @@ func SetElemAdd() error {
 	bnrb := nrb.Serialize(nil)
 
 	//debug
-	//fmt.Printf("batch total hdr is: ")
-	//for _, i := range xwbb {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println()
+	//DebugOut("batch total hdr", bnrb)
 
 	//netfilter header
 	//TODO: choose msg type
@@ -35,59 +31,30 @@ func SetElemAdd() error {
 	alen := uint32(3766492682)
 	buf := bytes.NewBuffer([]byte{})
 	binary.Write(buf, binary.LittleEndian, alen)
-	//fmt.Printf("attr length len(%d): %02x, %02x\n", b_buf.Len(), b_buf.Bytes()[0], b_buf.Bytes()[1])
 	elem := elem_attr(buf.Bytes())
 
-	fmt.Println("len of name is", len(elem), elem)
-
 	//debug
-	//fmt.Printf("batch end total hdr is: ")
-	//for _, i := range xwbbe {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println()
+	//DebugOut("batch end total hdr", )
 
-	body := make([]byte, len(set) + len(table) + len(elem))
-
-	tlen := 0
-	copy(body[tlen:], set)
-	tlen += len(set)
-	copy(body[tlen:], table)
-	tlen += len(table)
-	copy(body[tlen:], elem)
-	tlen += len(elem)
+	body := Merge(set, table, elem)
 
 	bnr := nr.Serialize(body)
+	//debug
+	//DebugOut("all elem key to send", bnr)
 
 	nre := newNetlinkRequestBatchEnd()
 	bnre := nre.Serialize(nil)
 	//debug
-	//fmt.Printf("all elem key to send: len(%d)", len(nrbb))
-	//for _, i := range nrbb {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println("")
+	//DebugOut("batch end total hdr", bnre)
 
-	wb := make([]byte, len(bnrb) + len(bnr) + len(bnre))
-	tlen = 0
-	copy(wb[tlen:], bnrb)
-	tlen += len(bnrb)
-	copy(wb[tlen:], bnr)
-	tlen += len(bnr)
-	copy(wb[tlen:], bnre)
+	wb := Merge(bnrb, bnr, bnre)
 
-	//fmt.Println("all data len is", len(wb))
-	//fmt.Printf("all data to send: ")
-	//for _, i := range wb {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println("")
 	err = NLSend(s, wb, 0, lsa)
 	if err != nil {
 		fmt.Println("nl send failed:", err)
 		return err
 	}
-	_, err = NLRecv(s)
+	_, err = NLRecv(s, nil)
 	if err != nil {
 		fmt.Println("nl recv failed:", err)
 		return err
@@ -120,49 +87,27 @@ func SetElemDelete() error {
 	elem := elem_attr(buf.Bytes())
 
 	//generate body
-	body := make([]byte, len(set) + len(table) + len(elem))
-	tlen := 0
-	copy(body[tlen:], set)
-	tlen += len(set)
-	copy(body[tlen:], table)
-	tlen += len(table)
-	copy(body[tlen:], elem)
-	tlen += len(elem)
+	body := Merge(set, table, elem)
 
 	bnr := nr.Serialize(body)
+	//debug
+	//DebugOut("all elem key to send", bnr)
 
 	nre := newNetlinkRequestBatchEnd()
 	bnre := nre.Serialize(nil)
-	//debug
-	//fmt.Printf("all elem key to send: len(%d)", len(nrbb))
-	//for _, i := range nrbb {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println("")
 
 	//generate data
-	wb := make([]byte, len(bnrb) + len(bnr) + len(bnre))
-	tlen = 0
-	copy(wb[tlen:], bnrb)
-	tlen += len(bnrb)
-	copy(wb[tlen:], bnr)
-	tlen += len(bnr)
-	copy(wb[tlen:], bnre)
+	wb := Merge(bnrb, bnr, bnre)
 
 	//debug
-	fmt.Println("all data len is", len(wb))
-	fmt.Printf("all data to send: ")
-	for _, i := range wb {
-		fmt.Printf("%02x ", i)
-	}
-	fmt.Println()
+	//DebugOut("all data to send", wb)
 
 	err = NLSend(s, wb, 0, lsa)
 	if err != nil {
 		fmt.Println("nl send failed:", err)
 		return err
 	}
-	_, err = NLRecv(s)
+	_, err = NLRecv(s, nil)
 	if err != nil {
 		fmt.Println("nl recv failed:", err)
 		return err

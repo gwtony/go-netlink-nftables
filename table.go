@@ -19,19 +19,14 @@ func TableGet(name string) ([]byte, error) {
 	wb := nr.Serialize(table)
 
 	//debug
-	//fmt.Println("all data len is", len(wb))
-	//fmt.Printf("all data to send: ")
-	//for _, i := range wb {
-	//	fmt.Printf("%02x ", i)
-	//}
-	//fmt.Println()
+	//DebugOut("all data to send", wb)
 
 	err = NLSend(s, wb, 0, lsa)
 	if err != nil {
 		fmt.Println("nl send failed:", err)
 		return nil, err
 	}
-	res, err := NLRecv(s)
+	res, err := NLRecv(s, nil)
 	if err != nil {
 		fmt.Println("nl recv failed:", err)
 		return nil, err

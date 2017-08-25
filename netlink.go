@@ -7,14 +7,15 @@ import (
 	//"unsafe"
 	"syscall"
 )
+
+type NLCb func(nm syscall.NetlinkMessage) (int, error)
+
 func NLSocket() (fd int, lsa *syscall.SockaddrNetlink, err error) {
-	//var errno int
 	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
 	if err != nil {
 		fmt.Println("socket failed")
 		return -1, nil, err
 	}
-	//defer syscall.Close(s)
 	lsa = &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK}
 	if err = syscall.Bind(s, lsa); err != nil {
 		syscall.Close(s)
@@ -37,12 +38,12 @@ func NLSend(fd int, data []byte, flag int, lsa *syscall.SockaddrNetlink) error {
 	return nil
 }
 
-func NLRecv(fd int) ([]byte, error) {
-	var errno int
+func NLRecv(fd int, cb NLCb) ([]byte, error) {
+	var err error
 	var tab []byte
 	rbNew := make([]byte, syscall.Getpagesize())
 
-done:
+//done:
 	ret := 0
 	for {
 		fmt.Println("to recv")
@@ -60,7 +61,6 @@ done:
 			fmt.Println("not header len")
 			return nil, syscall.EINVAL
 		}
-		//fmt.Println("recv %d data", nr)
 		rb = rb[:nr]
 		tab = append(tab, rb...)
 		msgs, err := syscall.ParseNetlinkMessage(rb)
@@ -77,7 +77,6 @@ done:
 				return nil, err
 			}
 			switch lsa.(type) {
-			//switch v := lsa.(type) {
 			case *syscall.SockaddrNetlink:
 				fmt.Printf("seq is %d, pid is %d\n", m.Header.Seq, m.Header.Pid)
 				fmt.Println(m)
@@ -89,35 +88,55 @@ done:
 				fmt.Println("not sockaddr netlink")
 				return nil, syscall.EINVAL
 			}
-			if m.Header.Type == syscall.NLMSG_DONE {
-				fmt.Println("nlmsg done")
-				goto done
+
+			if m.Header.Type >= syscall.NLMSG_MIN_TYPE {
+				if cb != nil {
+					//TODO: deal err
+					ret, err = cb(m)
+					if ret <= MNL_CB_STOP {
+						goto end
+					}
+				}
 			}
-			if m.Header.Type == syscall.NLMSG_ERROR {
-				ret, errno = cberror(m)
-				if ret <= 0 {
+			switch m.Header.Type {
+			case syscall.NLMSG_NOOP:
+				//noop
+				ret = MNL_CB_OK
+			case syscall.NLMSG_ERROR:
+				ret, err = cberror(m)
+				if ret <= MNL_CB_STOP {
 					goto end
 				}
+			case syscall.NLMSG_DONE:
+				fmt.Println("nlmsg done")
+				ret = MNL_CB_STOP
+			case syscall.NLMSG_OVERRUN:
+				//noop
+				ret = MNL_CB_OK
+			}
+
+			if ret <= MNL_CB_STOP {
+				goto end
 			}
 		}
 	}
 end:
 	if ret < 0 {
-		fmt.Println("errno is", syscall.Errno(errno))
-		return nil, syscall.Errno(errno)
+		fmt.Println("error is", err)
+		return nil, err
 	}
 
 	return tab, nil
 }
 
-func cberror(nm syscall.NetlinkMessage) (int, int) {
+func cberror(nm syscall.NetlinkMessage) (int, error) {
 	var nlme syscall.NlMsgerr
 	//TODO: check header len
 	buf := bytes.NewReader(nm.Data)
 	err := binary.Read(buf, binary.LittleEndian, &nlme.Error)
 	if err != nil {
 		fmt.Println("parse nlmsgerr failed")
-		return MNL_CB_ERROR, 0
+		return MNL_CB_ERROR, nil
 	}
 	//TODO: parse others in nlme
 	errno := int32(0)
@@ -128,11 +147,10 @@ func cberror(nm syscall.NetlinkMessage) (int, int) {
 		fmt.Println(nlme.Error)
 		errno = nlme.Error
 	}
-	fmt.Printf("error is %x\n", int(errno))
+	fmt.Printf("error is %x\n", syscall.Errno(errno))
 	if nlme.Error == 0 {
-		return MNL_CB_STOP, int(errno)
+		return MNL_CB_STOP, syscall.Errno(errno)
 	} else {
-		return MNL_CB_ERROR, int(errno)
+		return MNL_CB_ERROR, syscall.Errno(errno)
 	}
 }
-
