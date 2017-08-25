@@ -46,7 +46,7 @@ func newNetlinkRequest(htype, flags uint16) (*NetlinkRequest) {
 	//nr.Header.Flags = syscall.NLM_F_REQUEST | syscall.NLM_F_ACK | syscall.NLM_F_CREATE | syscall.NLM_F_EXCL
 
 	//get 
-	nr.Header.Flags = flags
+	nr.Header.Flags = syscall.NLM_F_REQUEST | flags
 	//nr.Header.Flags = syscall.NLM_F_REQUEST | syscall.NLM_F_ACK
 	//nr.Header.Flags = syscall.NLM_F_DUMP | syscall.NLM_F_REQUEST | syscall.NLM_F_ACK
 

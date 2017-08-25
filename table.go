@@ -13,7 +13,7 @@ func TableGet(name string) ([]byte, error) {
 	}
 	defer NLClose(s)
 
-	nr := newNetlinkRequest(NFT_MSG_GETTABLE, syscall.NLM_F_REQUEST | syscall.NLM_F_ACK)
+	nr := newNetlinkRequest(NFT_MSG_GETTABLE, syscall.NLM_F_ACK)
 
 	table := attrz([]byte(name), NFTA_TABLE_NAME)
 	wb := nr.Serialize(table)
