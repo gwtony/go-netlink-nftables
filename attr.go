@@ -16,7 +16,7 @@ func attrz(name []byte, attrType int) []byte {
 	buf := bytes.NewBuffer([]byte{})
 	binary.Write(buf, binary.LittleEndian, alen)
 	//fmt.Printf("attr length len(%d): %02x, %02x\n", b_buf.Len(), b_buf.Bytes()[0], b_buf.Bytes()[1])
-	fmt.Println()
+	//fmt.Println()
 	copy(attr[0:2], buf.Bytes())
 
 	atype := uint16(attrType)
@@ -26,12 +26,8 @@ func attrz(name []byte, attrType int) []byte {
 	copy(attr[2:4], buf.Bytes())
 	copy(attr[4:], name)
 
-	//For debug
-	//fmt.Printf("len(%d), name(%s): ", len(attr), string(name))
-	//for _, ai := range attr {
-	//	fmt.Printf("%02x ", ai)
-	//}
-	//fmt.Println("")
+	//debug
+	//DebugOut("attrz", attr)
 
 	return attr
 }
@@ -53,12 +49,8 @@ func attr(name []byte, attrType int) []byte {
 	copy(attr[2:4], buf.Bytes())
 	copy(attr[4:], name)
 
-	//For debug
-	//fmt.Printf("len(%d), name(%s): ", len(attr), string(name))
-	//for _, ai := range attr {
-	//	fmt.Printf("%02x ", ai)
-	//}
-	//fmt.Println("")
+	//debug
+	//DebugOut("attr", attr)
 
 	return attr
 }

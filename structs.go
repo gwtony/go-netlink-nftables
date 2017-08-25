@@ -1,9 +1,5 @@
 package nft
 import (
-	//"fmt"
-	//"errors"
-	//"bytes"
-	//"encoding/binary"
 	"unsafe"
 	"syscall"
 )
@@ -37,7 +33,7 @@ func (msg *Nfgenmsg) Serialize() []byte {
 }
 
 type NetlinkRequest struct {
-    Header syscall.NlMsghdr
+	Header syscall.NlMsghdr
 	NFHeader Nfgenmsg
 }
 
@@ -47,21 +43,13 @@ func MNL_ALIGN(length int) int {
 
 // Serialize the Netlink Request into a byte array
 func (nr *NetlinkRequest) Serialize(data []byte) []byte {
-	length := syscall.SizeofNlMsghdr //+ nr.msg.
+	length := syscall.SizeofNlMsghdr
 	bnfh := nr.NFHeader.Serialize()
 	lnfh := len(bnfh)
-	//length = length + len(data)
 	length = length + lnfh + len(data)
 
-	//For debug
-	//dataBytes := make([][]byte, len(req.Data))
-	//for i, data := range req.Data {
-	//	dataBytes[i] = data.Serialize()
-	//	length = length + len(dataBytes[i])
-	//}
 	nr.Header.Len = uint32(length)
 
-	//req.Len = uint32(length)
 	b := make([]byte, length)
 	hdr := (*(*[syscall.SizeofNlMsghdr]byte)(unsafe.Pointer(nr)))[:]
 	next := syscall.SizeofNlMsghdr
@@ -69,16 +57,9 @@ func (nr *NetlinkRequest) Serialize(data []byte) []byte {
 	copy(b[next:next + lnfh], bnfh)
 	next += lnfh
 	copy(b[next:length], data)
+
 	//For debug
-	//for _, data := range dataBytes {
-	//	for _, dataByte := range data {
-	//		b[next] = dataByte
-	//		next = next + 1
-	//	}
-	//}
-	//// Add the raw data if any
-	//if len(req.RawData) > 0 {
-	//	copy(b[next:length], req.RawData)
-	//}
+	//DebugOut("nr serialize", b)
+
 	return b
 }
