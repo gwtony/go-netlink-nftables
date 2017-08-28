@@ -38,7 +38,7 @@ func NLSend(fd int, data []byte, flag int, lsa *syscall.SockaddrNetlink) error {
 	return nil
 }
 
-func NLRecv(fd int, cb NLCb) ([]byte, error) {
+func NLRecv(fd int, cb NLCb) error {
 	var err error
 	var tab []byte
 	rbNew := make([]byte, syscall.Getpagesize())
@@ -51,7 +51,7 @@ func NLRecv(fd int, cb NLCb) ([]byte, error) {
 		nr, _, err := syscall.Recvfrom(fd, rb, 0)
 		if err != nil {
 			fmt.Println("recv from failed")
-			return nil, err
+			return err
 		}
 		if nr == 0 {
 			fmt.Println("recv done")
@@ -59,14 +59,14 @@ func NLRecv(fd int, cb NLCb) ([]byte, error) {
 		}
 		if nr < syscall.NLMSG_HDRLEN {
 			fmt.Println("not header len")
-			return nil, syscall.EINVAL
+			return syscall.EINVAL
 		}
 		rb = rb[:nr]
 		tab = append(tab, rb...)
 		msgs, err := syscall.ParseNetlinkMessage(rb)
 		if err != nil {
 			fmt.Println("parse message failed")
-			return nil, err
+			return err
 		}
 		fmt.Println("recv msgs len is %d", len(msgs))
 		for _, m := range msgs {
@@ -74,7 +74,7 @@ func NLRecv(fd int, cb NLCb) ([]byte, error) {
 			lsa, err := syscall.Getsockname(fd)
 			if err != nil {
 				fmt.Println("get sockname failed")
-				return nil, err
+				return err
 			}
 			switch lsa.(type) {
 			case *syscall.SockaddrNetlink:
@@ -86,7 +86,7 @@ func NLRecv(fd int, cb NLCb) ([]byte, error) {
 				//}
 			default:
 				fmt.Println("not sockaddr netlink")
-				return nil, syscall.EINVAL
+				return syscall.EINVAL
 			}
 
 			if m.Header.Type >= syscall.NLMSG_MIN_TYPE {
@@ -123,10 +123,10 @@ func NLRecv(fd int, cb NLCb) ([]byte, error) {
 end:
 	if ret < 0 {
 		fmt.Println("error is", err)
-		return nil, err
+		return err
 	}
 
-	return tab, nil
+	return nil
 }
 
 func cberror(nm syscall.NetlinkMessage) (int, error) {

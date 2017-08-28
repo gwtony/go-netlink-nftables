@@ -43,9 +43,11 @@ const (
 	NFNL_MSG_BATCH_END = syscall.NLMSG_MIN_TYPE+1
 )
 
-//const (
-//	NLA_F_NESTED =     (1 << 15) //syscall.NLA_F_NESTED
-//)
+const (
+	//NLA_F_NESTED =     (1 << 15) //syscall.NLA_F_NESTED
+	NLA_TYPE_MASK = ~(syscall.NLA_F_NESTED | syscall.NLA_F_NET_BYTEORDER)
+)
+
 const (
     SizeofNfgenmsg      = 4 //maybe syscall.NLMSG_ALIGNTO
 	NFNL_SUBSYS_NFTABLES = 10
@@ -92,4 +94,20 @@ const (
 	NFTA_TABLE_FLAGS
 	NFTA_TABLE_USE
 	__NFTA_TABLE_MAX
+)
+
+const (
+	MNL_TYPE_UNSPEC = iota
+	MNL_TYPE_U8
+	MNL_TYPE_U16
+	MNL_TYPE_U32
+	MNL_TYPE_U64
+	MNL_TYPE_STRING
+	MNL_TYPE_FLAG
+	MNL_TYPE_MSECS
+	MNL_TYPE_NESTED
+	MNL_TYPE_NESTED_COMPAT
+	MNL_TYPE_NUL_STRING
+	MNL_TYPE_BINARY
+	MNL_TYPE_MAX
 )
