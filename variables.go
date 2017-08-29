@@ -61,6 +61,9 @@ const (
 	NFTA_DATA_VERDICT
 	__NFTA_DATA_MAX
 )
+const (
+	NFTA_DATA_MAX = __NFTA_DATA_MAX + 1
+)
 
 //nf_tables set element netlink attributes
 const (

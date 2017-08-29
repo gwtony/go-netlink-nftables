@@ -293,6 +293,7 @@ func SetElemParse2(nls *NLSet, attr *nlattr) int {
 	}
 	if i, ok := am[NFTA_SET_ELEM_KEY]; ok {
 		//TODO: parse data
+		ret = 
 		fmt.Println("case NFTA_SET_ELEM_KEY", i)
 		e.Flags |= (1 << NFTNL_SET_ELEM_KEY)
 	}
