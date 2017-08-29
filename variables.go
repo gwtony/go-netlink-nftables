@@ -44,8 +44,9 @@ const (
 )
 
 const (
-	//NLA_F_NESTED =     (1 << 15) //syscall.NLA_F_NESTED
-	NLA_TYPE_MASK = ~(syscall.NLA_F_NESTED | syscall.NLA_F_NET_BYTEORDER)
+	//NLA_TYPE_MASK should be ^(syscall.NLA_F_NESTED | syscall.NLA_F_NET_BYTEORDER)
+	//use unmask to skip constant overflow
+	NLA_TYPE_UNMASK = syscall.NLA_F_NESTED | syscall.NLA_F_NET_BYTEORDER
 )
 
 const (
@@ -85,6 +86,9 @@ const (
 	NFTA_SET_ELEM_LIST_SET_ID
 	__NFTA_SET_ELEM_LIST_MAX
 )
+const (
+	NFTA_SET_ELEM_LIST_MAX = (__NFTA_SET_ELEM_LIST_MAX - 1)
+)
 
 
 //nf_tables table netlink attributes
@@ -110,4 +114,34 @@ const (
 	MNL_TYPE_NUL_STRING
 	MNL_TYPE_BINARY
 	MNL_TYPE_MAX
+)
+
+const (
+    NFTA_LIST_UNPEC = iota
+    NFTA_LIST_ELEM
+    __NFTA_LIST_MAX
+)
+
+const (
+	NFTA_SET_UNSPEC = iota
+	NFTA_SET_TABLE
+	NFTA_SET_NAME
+	NFTA_SET_FLAGS
+	NFTA_SET_KEY_TYPE
+	NFTA_SET_KEY_LEN
+	NFTA_SET_DATA_TYPE
+	NFTA_SET_DATA_LEN
+	NFTA_SET_POLICY
+	NFTA_SET_DESC
+	NFTA_SET_ID
+	NFTA_SET_TIMEOUT
+	NFTA_SET_GC_INTERVAL
+	NFTA_SET_USERDATA
+	NFTA_SET_PAD
+	NFTA_SET_OBJ_TYPE
+	__NFTA_SET_MAX
+)
+
+const (
+	NFTA_SET_MAX = (__NFTA_SET_MAX - 1)
 )

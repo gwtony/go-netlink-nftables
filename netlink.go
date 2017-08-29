@@ -61,6 +61,7 @@ func NLRecv(fd int, cb NLCb) error {
 			fmt.Println("not header len")
 			return syscall.EINVAL
 		}
+		fmt.Println("recv data len is", nr)
 		rb = rb[:nr]
 		tab = append(tab, rb...)
 		msgs, err := syscall.ParseNetlinkMessage(rb)

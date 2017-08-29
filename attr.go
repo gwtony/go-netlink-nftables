@@ -17,11 +17,11 @@ type nlattr struct {
 	nlaType    uint16
 	nlaPayload []byte
 }
-type attrmap map[int]*nlattr
+type attrmap map[uint16]*nlattr
 
 //type attrDataTypeLen []
 
-type attrcb func(nla *nlattr, am *attrmap) int
+type attrcb func(nla *nlattr, am attrmap) int
 
 func attrz(name []byte, attrType int) []byte {
 	nlen := len(name)
@@ -79,15 +79,21 @@ func elemAttr(name []byte) []byte { //TODO: change
 }
 
 func getPayloadOffset(offset uint32) uint32 {
-	return MNL_NLMSG_HDRLEN + MNL_ALIGN(offset)
+	return uint32(MNL_NLMSG_HDRLEN() + MNL_ALIGN(int(offset)))
 }
 
 func attrOk(nla *nlattr, dlen int) bool {
-	return dlen >= NLATTR_LEN && int(nla->nlaLen) >= NLATTR_LEN && int(nla->nlaLen) <= dlen
+	fmt.Printf("nla.nlaLen is %d, dlen is %d\n", nla.nlaLen, dlen)
+	return dlen >= NLATTR_LEN && int(nla.nlaLen) >= NLATTR_LEN && int(nla.nlaLen) <= dlen
 }
 
 func attrParseFromBuffer(data []byte, pos int) (*nlattr, error) {
+	var nlaLen, nlaType uint16
 	nla := &nlattr{}
+	fmt.Printf("in attr parse from buffer, data len(%d), pos is %d\n", len(data), pos)
+	if len(data) - pos < 4 {
+		return nil, errors.New("invalid attr buffer")
+	}
 
 	tbr := bytes.NewReader(data[pos : pos + 2])
 	err := binary.Read(tbr, binary.LittleEndian, &nlaLen)
@@ -96,6 +102,7 @@ func attrParseFromBuffer(data []byte, pos int) (*nlattr, error) {
 		return nil, err
 	}
 	nla.nlaLen = nlaLen
+	fmt.Printf("attr parse from buffer nlalen is %d\n", nlaLen)
 
 	tbr = bytes.NewReader(data[pos + 2 : pos + 4])
 	err = binary.Read(tbr, binary.LittleEndian, &nlaType)
@@ -106,59 +113,102 @@ func attrParseFromBuffer(data []byte, pos int) (*nlattr, error) {
 	nla.nlaType = nlaType
 
 	pos += 4
-	nla.nlaPayload = data[pos: nla.nlaLen]
+	if pos < len(data) {
+		nla.nlaPayload = data[pos: pos + int(nla.nlaLen) - 4]
+	}
 
 	return nla, nil
 }
 
-func attrParse(data []byte, cb attrcb, am *attrmap) ([]nlattr, error) {
+func attrParse(data []byte, cb attrcb, am attrmap) ([]*nlattr, error) {
 	var anla []*nlattr
-	var nlaLen, nlaType uint16
+	//var nlaLen, nlaType uint16
 
 	pos := 0
 	dlen := len(data)
 
+	fmt.Printf("in attr parse, len is %d\n", dlen)
 	for {
-		nla, err := attrParseFromBuffer(data, pos)
+		attr, err := attrParseFromBuffer(data, pos)
 		if err != nil {
 			return nil, err
 		}
 
-		if !attrOk(nla, dlen) {
+		if !attrOk(attr, dlen) {
 			break
 		}
 
-		ret, err := cb(nla, am)
-		if err != nil {
-			return nil, err
+		ret := cb(attr, am)
+		if ret < 0 {
+			return nil, errors.New("parse attr failed cb")
 		}
 		if ret <= MNL_CB_STOP {
 			return nil, errors.New("parse attr failed")
 		}
 
-		anla = append(anla, nla)
+		anla = append(anla, attr)
 
+		pos += MNL_ALIGN(int(attr.nlaLen)) //TODO: maybe uint16
+		fmt.Printf("attr parse pos is %d, dlen is %d\n", pos, dlen)
 		if pos >= dlen {
 			break
 		}
 	}
+	fmt.Println("out attr parse")
 
 	return anla, nil
 }
 
-func attrGetType(nla *nlattr) uint16 {
-	return nla.nlaType & NLA_TYPE_MASK
+func attrParseNested(nested *nlattr, cb attrcb, am attrmap) (int, error) {
+	ret := MNL_CB_OK
+	left := 0
+	pos := 0
+
+	fmt.Println("in attr parse nested")
+	battr := attrGetPayload(nested)
+	for {
+		nattr, err := attrParseFromBuffer(battr, pos)
+		if err != nil {
+			return -1, err
+		}
+		//left = len(battr) - int(nattr.nlaLen) //TODO: maybe uint16
+		left = int(nattr.nlaLen)
+		if !attrOk(nattr, left) {
+			break
+		}
+
+		ret := cb(nattr, am)
+		if err != nil {
+			return -1, errors.New("parse attr failed cb")
+		}
+		if ret <= MNL_CB_STOP {
+			return -1, errors.New("parse attr failed")
+		}
+
+		pos += MNL_ALIGN(int(nattr.nlaLen)) //TODO: maybe uint16
+		if pos >= len(battr) {
+			break
+		}
+	}
+
+	return ret, nil
 }
 
-func attrTypeIsValid(nla *nlattr, max uint16) (int, error) {
-	if attrGetType(nla) > max {
+func attrGetType(attr *nlattr) uint16 {
+	var unmask uint16
+	unmask = NLA_TYPE_UNMASK
+	return attr.nlaType & ^unmask
+}
+
+func attrTypeIsValid(attr *nlattr, max uint16) (int, error) {
+	if attrGetType(attr) > max {
 		return -1, syscall.EOPNOTSUPP
 	}
 
 	return 1, nil
 }
 
-func attrIsValid(nla *nlattr, atype int) (int, error) {
+func attrIsValid(attr *nlattr, atype int) (int, error) {
 	var explen uint16
 
 	if atype >= MNL_TYPE_MAX {
@@ -168,20 +218,19 @@ func attrIsValid(nla *nlattr, atype int) (int, error) {
 	//TODO: explen get from mnl_attr_data_type_len[MNL_TYPE_MAX]
 	explen = 0
 
-	return attrIsValidInternal(nla, atype, explen)
+	return attrIsValidInternal(attr, atype, explen)
 }
 
-func attrIsValidInternal(nla *nlattr, atype, explen int) (int, error) {
+func attrIsValidInternal(attr *nlattr, atype int, explen uint16) (int, error) {
 	var attrlen uint16
 
 	switch(atype) {
 	//TODO: other cases from libmnl/src/attr.c:__mnl_attr_validate
 	case MNL_TYPE_STRING:
-		attrlen = nla.nlaLen - MNL_ATTR_HDRLEN()
+		attrlen = attr.nlaLen - uint16(MNL_ATTR_HDRLEN())
 		if attrlen == 0 {
 			return -1, syscall.ERANGE
 		}
-
 	}
 	if explen != 0 && attrlen > explen {
 		return -1, syscall.ERANGE
@@ -192,7 +241,7 @@ func attrIsValidInternal(nla *nlattr, atype, explen int) (int, error) {
 }
 
 func MNL_ATTR_HDRLEN() int {
-	reutrn MNL_ALIGN(NLATTR_LEN)
+	return MNL_ALIGN(NLATTR_LEN)
 }
 
 func attrGetPayload(attr *nlattr) []byte {
@@ -201,11 +250,12 @@ func attrGetPayload(attr *nlattr) []byte {
 
 func attrGetU32(attr *nlattr) uint32 {
 	var ret uint32
-	tbr = bytes.NewReader(attr.nlaPayload[:2])
-	err = binary.Read(tbr, binary.LittleEndian, &ret)
+	tbr := bytes.NewReader(attr.nlaPayload[:2])
+	err := binary.Read(tbr, binary.LittleEndian, &ret)
 	if err != nil {
 		fmt.Println("binary.Read failed:", err)
-		return -1
+		//Should not failed
+		return 0
 	}
 	return ret
 }

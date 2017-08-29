@@ -26,11 +26,12 @@ func TableGet(name string) ([]byte, error) {
 		fmt.Println("nl send failed:", err)
 		return nil, err
 	}
-	res, err := NLRecv(s, nil)
+	err = NLRecv(s, nil)
 	if err != nil {
 		fmt.Println("nl recv failed:", err)
 		return nil, err
 	}
 
-	return res, nil
+	//TODO: return something
+	return nil, nil
 }

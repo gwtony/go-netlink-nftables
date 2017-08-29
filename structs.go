@@ -1,5 +1,7 @@
 package nft
 import (
+	"fmt"
+	"bytes"
 	"unsafe"
 	"syscall"
 	"encoding/binary"
@@ -43,7 +45,8 @@ func MNL_ALIGN(length int) int {
 	return (((length)+SizeofNfgenmsg-1) & ^(SizeofNfgenmsg-1))
 }
 
-var HTOLEN syscall.NlMsghdr
+//var HTOLEN syscall.NlMsghdr
+var HTOLEN Nfgenmsg
 func MNL_NLMSG_HDRLEN() int {
 	return MNL_ALIGN(binary.Size(HTOLEN))
 }
@@ -77,7 +80,7 @@ func parseNfgenmsg(data []byte) (*Nfgenmsg, error) {
 
 	nfm := &Nfgenmsg{}
 
-	tbr := bytes.NewReader(data[0])
+	tbr := bytes.NewReader(data[0:1])
 	err := binary.Read(tbr, binary.BigEndian, &family)
 	if err != nil {
 		fmt.Println("binary.Read failed:", err)
@@ -85,7 +88,7 @@ func parseNfgenmsg(data []byte) (*Nfgenmsg, error) {
 	}
 	nfm.Nfgenfamily = family
 
-	tbr = bytes.NewReader(data[1])
+	tbr = bytes.NewReader(data[1:2])
 	err = binary.Read(tbr, binary.BigEndian, &version)
 	if err != nil {
 		fmt.Println("binary.Read failed:", err)
