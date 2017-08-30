@@ -46,7 +46,7 @@ func NLRecv(fd int, cb NLCb) error {
 //done:
 	ret := 0
 	for {
-		fmt.Println("to recv")
+		//fmt.Println("to recv")
 		rb := rbNew
 		nr, _, err := syscall.Recvfrom(fd, rb, 0)
 		if err != nil {
@@ -61,7 +61,7 @@ func NLRecv(fd int, cb NLCb) error {
 			fmt.Println("not header len")
 			return syscall.EINVAL
 		}
-		fmt.Println("recv data len is", nr)
+		//fmt.Println("recv data len is", nr)
 		rb = rb[:nr]
 		tab = append(tab, rb...)
 		msgs, err := syscall.ParseNetlinkMessage(rb)
@@ -69,9 +69,9 @@ func NLRecv(fd int, cb NLCb) error {
 			fmt.Println("parse message failed")
 			return err
 		}
-		fmt.Println("recv msgs len is %d", len(msgs))
+		//fmt.Println("recv msgs len is %d", len(msgs))
 		for _, m := range msgs {
-			fmt.Println("header is", m.Header.Type)
+			//fmt.Println("header is", m.Header.Type)
 			lsa, err := syscall.Getsockname(fd)
 			if err != nil {
 				fmt.Println("get sockname failed")
@@ -79,12 +79,13 @@ func NLRecv(fd int, cb NLCb) error {
 			}
 			switch lsa.(type) {
 			case *syscall.SockaddrNetlink:
-				fmt.Printf("seq is %d, pid is %d\n", m.Header.Seq, m.Header.Pid)
-				fmt.Println(m)
-				//if m.Header.Seq != 1 || m.Header.Pid != v.Pid {
-				//	fmt.Println("seq or pid not match")
-				//	return nil, syscall.EINVAL
-				//}
+				//fmt.Printf("seq is %d, pid is %d\n", m.Header.Seq, m.Header.Pid)
+				//fmt.Println(m)
+
+				////if m.Header.Seq != 1 || m.Header.Pid != v.Pid {
+				////	fmt.Println("seq or pid not match")
+				////	return nil, syscall.EINVAL
+				////}
 			default:
 				fmt.Println("not sockaddr netlink")
 				return syscall.EINVAL
@@ -109,7 +110,7 @@ func NLRecv(fd int, cb NLCb) error {
 					goto end
 				}
 			case syscall.NLMSG_DONE:
-				fmt.Println("nlmsg done")
+				//fmt.Println("nlmsg done")
 				ret = MNL_CB_STOP
 			case syscall.NLMSG_OVERRUN:
 				//noop
@@ -148,7 +149,7 @@ func cberror(nm syscall.NetlinkMessage) (int, error) {
 		fmt.Println(nlme.Error)
 		errno = nlme.Error
 	}
-	fmt.Printf("error is %x\n", syscall.Errno(errno))
+	//fmt.Printf("error is %x\n", errno)
 	if nlme.Error == 0 {
 		return MNL_CB_STOP, syscall.Errno(errno)
 	} else {

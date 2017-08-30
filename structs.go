@@ -45,7 +45,6 @@ func MNL_ALIGN(length int) int {
 	return (((length)+SizeofNfgenmsg-1) & ^(SizeofNfgenmsg-1))
 }
 
-//var HTOLEN syscall.NlMsghdr
 var HTOLEN Nfgenmsg
 func MNL_NLMSG_HDRLEN() int {
 	return MNL_ALIGN(binary.Size(HTOLEN))

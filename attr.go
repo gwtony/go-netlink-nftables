@@ -83,14 +83,14 @@ func getPayloadOffset(offset uint32) uint32 {
 }
 
 func attrOk(nla *nlattr, dlen int) bool {
-	fmt.Printf("nla.nlaLen is %d, dlen is %d\n", nla.nlaLen, dlen)
+	//fmt.Printf("nla.nlaLen is %d, dlen is %d\n", nla.nlaLen, dlen)
 	return dlen >= NLATTR_LEN && int(nla.nlaLen) >= NLATTR_LEN && int(nla.nlaLen) <= dlen
 }
 
 func attrParseFromBuffer(data []byte, pos int) (*nlattr, error) {
 	var nlaLen, nlaType uint16
 	nla := &nlattr{}
-	fmt.Printf("in attr parse from buffer, data len(%d), pos is %d\n", len(data), pos)
+	//fmt.Printf("in attr parse from buffer, data len(%d), pos is %d\n", len(data), pos)
 	if len(data) - pos < 4 {
 		return nil, errors.New("invalid attr buffer")
 	}
@@ -102,7 +102,7 @@ func attrParseFromBuffer(data []byte, pos int) (*nlattr, error) {
 		return nil, err
 	}
 	nla.nlaLen = nlaLen
-	fmt.Printf("attr parse from buffer nlalen is %d\n", nlaLen)
+	//fmt.Printf("attr parse from buffer nlalen is %d\n", nlaLen)
 
 	tbr = bytes.NewReader(data[pos + 2 : pos + 4])
 	err = binary.Read(tbr, binary.LittleEndian, &nlaType)
@@ -127,7 +127,7 @@ func attrParse(data []byte, cb attrcb, am attrmap) ([]*nlattr, error) {
 	pos := 0
 	dlen := len(data)
 
-	fmt.Printf("in attr parse, len is %d\n", dlen)
+	//fmt.Printf("in attr parse, len is %d\n", dlen)
 	for {
 		attr, err := attrParseFromBuffer(data, pos)
 		if err != nil {
@@ -149,12 +149,11 @@ func attrParse(data []byte, cb attrcb, am attrmap) ([]*nlattr, error) {
 		anla = append(anla, attr)
 
 		pos += MNL_ALIGN(int(attr.nlaLen)) //TODO: maybe uint16
-		fmt.Printf("attr parse pos is %d, dlen is %d\n", pos, dlen)
+		//fmt.Printf("attr parse pos is %d, dlen is %d\n", pos, dlen)
 		if pos >= dlen {
 			break
 		}
 	}
-	fmt.Println("out attr parse")
 
 	return anla, nil
 }
@@ -164,14 +163,13 @@ func attrParseNested(nested *nlattr, cb attrcb, am attrmap) (int, error) {
 	left := 0
 	pos := 0
 
-	fmt.Println("in attr parse nested")
+	//fmt.Println("in attr parse nested")
 	battr := attrGetPayload(nested)
 	for {
 		nattr, err := attrParseFromBuffer(battr, pos)
 		if err != nil {
 			return -1, err
 		}
-		//left = len(battr) - int(nattr.nlaLen) //TODO: maybe uint16
 		left = int(nattr.nlaLen)
 		if !attrOk(nattr, left) {
 			break

@@ -2,10 +2,11 @@ package nft
 
 import (
 	"fmt"
-	"bytes"
+	//"bytes"
 	"errors"
 	"syscall"
-	"encoding/binary"
+	//"encoding/json"
+	//"encoding/binary"
 )
 
 const (
@@ -21,7 +22,8 @@ const (
 	NFTNL_SET_ELEM_OBJREF
 )
 
-func SetElemAdd() error {
+//Only operate ip family, TODO: other family
+func SetElemAdd(tname, sname string, ekey []byte) error { //table name, set name
 	s, lsa, err := NLSocket()
 	if err != nil {
 		fmt.Println("create nl socket failed")
@@ -39,13 +41,10 @@ func SetElemAdd() error {
 	//TODO: choose msg type
 	nr := newNetlinkRequest(NFT_MSG_NEWSETELEM, syscall.NLM_F_ACK | syscall.NLM_F_CREATE | syscall.NLM_F_EXCL)
 
-	set := attrz([]byte("bh"), NFTA_SET_ELEM_LIST_SET)
-	table := attrz([]byte("filter"), NFTA_SET_ELEM_LIST_TABLE)
+	set := attrz([]byte(sname), NFTA_SET_ELEM_LIST_SET)
+	table := attrz([]byte(tname), NFTA_SET_ELEM_LIST_TABLE)
 
-	alen := uint32(3766492682)
-	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.LittleEndian, alen)
-	elem := elemAttr(buf.Bytes())
+	elem := elemAttr(ekey)
 
 	//debug
 	//DebugOut("batch end total hdr", )
@@ -76,7 +75,7 @@ func SetElemAdd() error {
 	return nil
 }
 
-func SetElemGet() error {
+func SetElemGet(tname, sname string) error {
 	s, lsa, err := NLSocket()
 	if err != nil {
 		fmt.Println("create nl socket failed")
@@ -86,8 +85,8 @@ func SetElemGet() error {
 
 	nr := newNetlinkRequest(NFT_MSG_GETSETELEM, syscall.NLM_F_DUMP | syscall.NLM_F_ACK)
 
-	set := attrz([]byte("bh"), NFTA_SET_ELEM_LIST_SET)
-	table := attrz([]byte("filter"), NFTA_SET_ELEM_LIST_TABLE)
+	set := attrz([]byte(sname), NFTA_SET_ELEM_LIST_SET)
+	table := attrz([]byte(tname), NFTA_SET_ELEM_LIST_TABLE)
 
 	body := Merge(set, table)
 	wb := nr.Serialize(body)
@@ -109,7 +108,7 @@ func SetElemGet() error {
 	return nil
 }
 
-func SetElemDelete() error {
+func SetElemDelete(tname, sname string, ekey []byte) error {
 	s, lsa, err := NLSocket()
 	if err != nil {
 		fmt.Println("create nl socket failed")
@@ -121,13 +120,10 @@ func SetElemDelete() error {
 	bnrb := nrb.Serialize(nil)
 	nr := newNetlinkRequest(NFT_MSG_DELSETELEM, syscall.NLM_F_ACK)
 
-	set := attrz([]byte("bh"), NFTA_SET_ELEM_LIST_SET)
-	table := attrz([]byte("filter"), NFTA_SET_ELEM_LIST_TABLE)
+	set := attrz([]byte(sname), NFTA_SET_ELEM_LIST_SET)
+	table := attrz([]byte(tname), NFTA_SET_ELEM_LIST_TABLE)
 
-	alen := uint32(3766492682)
-	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.LittleEndian, alen)
-	elem := elemAttr(buf.Bytes())
+	elem := elemAttr(ekey)
 
 	//generate body
 	body := Merge(set, table, elem)
@@ -176,8 +172,6 @@ type NLSetElem struct {
 }
 
 func SetElemMsgParse(nm *syscall.NetlinkMessage) (*NLSet, error) {
-	//var family, version uint8
-	//var id uint16
 	nls := &NLSet{}
 	bnfm := nm.Data[:MNL_NLMSG_HDRLEN()]
 	am := make(attrmap, 1)
@@ -188,42 +182,40 @@ func SetElemMsgParse(nm *syscall.NetlinkMessage) (*NLSet, error) {
 		return nil, err
 	}
 
-	fmt.Println("nftgenmsg is ", nfm)
-	fmt.Printf("nm data len is %d\n", len(nm.Data))
 	_, err = attrParse(nm.Data[MNL_NLMSG_HDRLEN():], setElemListParseAttrCb, am)
 	if err != nil {
 		fmt.Println("parse attr failed")
 		return nil, err
 	}
-	fmt.Println("after attr parse")
+
 	if i, ok := am[NFTA_SET_ELEM_LIST_TABLE]; ok {
 		//TODO: check nls.table
 		nls.Table = attrGetStr(i)
-		fmt.Println("attr parse table is", nls.Table)
+		//fmt.Println("attr parse table is", nls.Table)
 		nls.Flags |= (1 << NFTNL_SET_TABLE)
 	}
 	if i, ok := am[NFTA_SET_ELEM_LIST_SET]; ok {
 		//TODO: check nls.name
 		nls.Name = attrGetStr(i)
-		fmt.Println("attr parse name is", nls.Name)
+		//fmt.Println("attr parse name is", nls.Name)
 		nls.Flags |= (1 << NFTA_SET_ELEM_LIST_SET)
 	}
 	if i, ok := am[NFTA_SET_ELEM_LIST_SET_ID]; ok {
 		nls.Id = attrGetU32(i)
-		fmt.Println("attr parse id is", nls.Id)
+		//fmt.Println("attr parse id is", nls.Id)
 		nls.Flags |= (1 << NFTA_SET_ELEM_LIST_SET_ID)
 	}
 	if i, ok := am[NFTA_SET_ELEM_LIST_ELEMENTS]; ok {
-		fmt.Println("attr parse got list elements")
+		//fmt.Println("attr parse got list elements")
 		ret := SetElemParse(nls, i)
 		if ret < 0 {
 			return nil, errors.New("elem parse error")
 		}
 	}
-	//...
+	//TODO: ...
 	nls.Family = uint32(nfm.Nfgenfamily)
 	nls.Flags |= (1 << NFTNL_SET_FAMILY)
-	fmt.Println("return nls:", nls)
+	//fmt.Println("return nls:", nls)
 
 	return nls, nil
 }
@@ -231,7 +223,7 @@ func SetElemMsgParse(nm *syscall.NetlinkMessage) (*NLSet, error) {
 func SetElemParse(nls *NLSet, attr *nlattr) int {
 	left := 0
 	pos := 0
-	fmt.Println("in set elem parse")
+	//fmt.Println("in set elem parse")
 
 	battr := attrGetPayload(attr)
 	for {
@@ -240,9 +232,8 @@ func SetElemParse(nls *NLSet, attr *nlattr) int {
 			fmt.Println("attr parse from buffer failed")
 			return -1
 		}
-		//left = len(battr) - int(nattr.nlaLen)
 		left = int(nattr.nlaLen)
-		fmt.Println("set elem parse buf left is", left)
+		//fmt.Println("set elem parse buf left is", left)
 		if !attrOk(nattr, left) {
 			fmt.Println("attr not ok")
 			break
@@ -272,7 +263,7 @@ func SetElemParse2(nls *NLSet, attr *nlattr) int {
 	am := make(attrmap, 1)
 	e := &NLSetElem{}
 
-	fmt.Println("in set elem parse2")
+	//fmt.Println("in set elem parse2")
 
 	ret, err := attrParseNested(attr, setElemParseAttrCb, am)
 	if err != nil {
@@ -294,21 +285,18 @@ func SetElemParse2(nls *NLSet, attr *nlattr) int {
 		e.Flags |= (1 << NFTNL_SET_ELEM_EXPIRATION)
 	}
 	if i, ok := am[NFTA_SET_ELEM_KEY]; ok {
-		//TODO: parse data
 		rtype, ret = NftnlParseData(&e.Key, i)
 		if ret < 0 {
 			return ret
 		}
-		fmt.Println("case NFTA_SET_ELEM_KEY", i)
 		e.Flags |= (1 << NFTNL_SET_ELEM_KEY)
 	}
 	if i, ok := am[NFTA_SET_ELEM_DATA]; ok {
-		//TODO: parse data
 		rtype, ret = NftnlParseData(&e.Data, i)
 		if ret < 0 {
 			return ret
 		}
-		fmt.Println("case NFTA_SET_ELEM_DATA", i)
+
 		switch(rtype) {
 		case DATA_VERDICT:
 			e.Flags |= (1 << NFTNL_SET_ELEM_VERDICT)
@@ -330,22 +318,41 @@ func SetElemParse2(nls *NLSet, attr *nlattr) int {
 		//TODO
 		fmt.Println("case NFTA_SET_ELEM_OBJREF", i)
 	}
+
 	//TODO: list add tail
+	nls.ElementList = append(nls.ElementList, *e)
 	return 0
 }
 
 func SetElemGetCb(nm syscall.NetlinkMessage) (int, error) {
-	fmt.Println("in set elem get cb")
-	_, err := SetElemMsgParse(&nm)
+	//fmt.Println("in set elem get cb")
+	nls, err := SetElemMsgParse(&nm)
 	if err != nil {
 		//TODO: return some
 		return MNL_CB_OK, nil
 	}
+	//TODO: output
+	fmt.Printf("ip: ")
+	for _, e := range nls.ElementList {
+		for _, v := range e.Key.Val {
+			ip := Num2Ip(v)
+			fmt.Printf("%s ", ip)
+		}
+	}
+	fmt.Println()
+
+	//bnls, err := json.Marshal(nls)
+	//if err != nil {
+	//	fmt.Println("marshal failed")
+	//	return MNL_CB_OK, nil
+	//}
+	//fmt.Println("nls is:", string(bnls))
+
 	return MNL_CB_OK, nil
 }
 
 func setElemListParseAttrCb(attr *nlattr, am attrmap) int {
-	fmt.Println("in set elem list parse attr cb")
+	//fmt.Println("in set elem list parse attr cb")
 	atype := attrGetType(attr)
 	if _, err := attrTypeIsValid(attr, NFTA_SET_ELEM_LIST_MAX); err != nil {
 		return MNL_CB_OK
@@ -369,7 +376,7 @@ func setElemListParseAttrCb(attr *nlattr, am attrmap) int {
 }
 
 func setElemParseAttrCb(attr *nlattr, am attrmap) int {
-	fmt.Println("in set elem parse attr cb")
+	//fmt.Println("in set elem parse attr cb")
 	atype := attrGetType(attr)
 	if _, err := attrTypeIsValid(attr, NFTA_SET_MAX); err != nil {
 		fmt.Println("setElemParseAttrCb not valid")
@@ -402,8 +409,7 @@ func setElemParseAttrCb(attr *nlattr, am attrmap) int {
 		}
 	}
 
-
-	fmt.Println("setElemParseAttrCb all pass")
+	//fmt.Println("setElemParseAttrCb all pass")
 
 	am[atype] = attr
 	return MNL_CB_OK

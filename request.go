@@ -1,6 +1,6 @@
 package nft
 import (
-	"fmt"
+	//"fmt"
 	//"errors"
 	//"bytes"
 	//"encoding/binary"
@@ -22,7 +22,7 @@ func newNetlinkRequestBatchBegin() (*NetlinkRequest) {
 
 func newNetlinkRequestBatchEnd() (*NetlinkRequest) {
 	nr := &NetlinkRequest{}
-	fmt.Println("nlhdr len is", syscall.NLMSG_HDRLEN)
+	//fmt.Println("nlhdr len is", syscall.NLMSG_HDRLEN)
 	nr.Header.Len = uint32(syscall.NLMSG_HDRLEN)
 	nr.Header.Type = NFNL_MSG_BATCH_END
 
@@ -34,7 +34,7 @@ func newNetlinkRequestBatchEnd() (*NetlinkRequest) {
 
 func newNetlinkRequest(htype, flags uint16) (*NetlinkRequest) {
 	nr := &NetlinkRequest{}
-	fmt.Println("new netlink request type is", htype)
+	//fmt.Println("new netlink request type is", htype)
 	nr.Header.Len = uint32(syscall.NLMSG_HDRLEN)
 	nr.Header.Type = uint16((10 << 8) | htype) //from libnftnl/include/linux/netfilter/nf_tables.h
 

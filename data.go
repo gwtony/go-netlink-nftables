@@ -15,14 +15,14 @@ const (
 
 //Not use union
 type NftDatareg struct {
-	val []uint32 //size is NFT_DATA_VALUE_MAXLEN/sizeof(uint32_t), NFT_DATA_VALUE_MAXLEN is 64
-	vlen uint32
-	verdict int
-	chain string
+	Val []uint32 //size is NFT_DATA_VALUE_MAXLEN/sizeof(uint32_t), NFT_DATA_VALUE_MAXLEN is 64
+	Vlen uint32
+	Verdict int
+	Chain string
 }
 
 func nftnlParseData(data *NftDatareg, attr *nlattr) int {
-	fmt.Println("in nftnlDataParse")
+	//fmt.Println("in nftnlDataParse")
 	body := attr.nlaPayload
 	blen := len(body)
 	if blen == 0 {
@@ -35,7 +35,7 @@ func nftnlParseData(data *NftDatareg, attr *nlattr) int {
 		fmt.Println("len invalid")
 		return -1
 	}
-	data.val = make([]uint32, 0, 16) //16: 64/sizeof(uint32)
+	data.Val = make([]uint32, 0, 16) //16: 64/sizeof(uint32)
 
 	//DebugOut(body)
 
@@ -45,23 +45,23 @@ func nftnlParseData(data *NftDatareg, attr *nlattr) int {
 		if pos == blen {
 			break
 		}
-		tbr := bytes.NewReader(body[pos:pos + 4])
+		tbr := bytes.NewReader(body[pos:pos + 4]) //4: sizeof(uint32)
 		err := binary.Read(tbr, binary.LittleEndian, &val)
 		if err != nil {
 			fmt.Println("binary read error:", err)
 		}
-		fmt.Println("val is", val)
-		data.val = append(data.val, val)
+
+		data.Val = append(data.Val, val)
 		pos += 4
 	}
-	data.vlen = uint32(blen)
+	data.Vlen = uint32(blen)
 
 	return 0
 }
 
 //Return data, atype, ret
 func NftnlParseData(data *NftDatareg, attr *nlattr) (int, int) {
-	fmt.Println("in NftnlDataParse")
+	//fmt.Println("in NftnlDataParse")
 	ret := 0
 	am := make(attrmap, NFTA_DATA_MAX+1)
 	rtype := 0
@@ -72,7 +72,7 @@ func NftnlParseData(data *NftDatareg, attr *nlattr) (int, int) {
 	}
 
 	if i, ok := am[NFTA_DATA_VALUE]; ok {
-		fmt.Println("in NftnlParseData rtype is DATA_VALUE")
+		//fmt.Println("in NftnlParseData rtype is DATA_VALUE")
 		rtype = DATA_VALUE
 
 		ret = nftnlParseData(data, i)
@@ -90,7 +90,7 @@ func NftnlParseData(data *NftDatareg, attr *nlattr) (int, int) {
 }
 
 func NftnlDataParseCb(attr *nlattr, am attrmap) int {
-	fmt.Println("in NftnlDataParseCb")
+	//fmt.Println("in NftnlDataParseCb")
 	atype := attrGetType(attr)
 	if _, err := attrTypeIsValid(attr, NFTA_DATA_MAX); err != nil {
 		fmt.Println("in NftnlDataParseCb")
