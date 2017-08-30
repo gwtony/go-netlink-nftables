@@ -171,7 +171,8 @@ type NLSet struct {
 
 type NLSetElem struct {
 	Flags uint32
-	//TODO
+	Key	NftDatareg
+	Data NftDatareg
 }
 
 func SetElemMsgParse(nm *syscall.NetlinkMessage) (*NLSet, error) {
@@ -267,6 +268,7 @@ func SetElemParse(nls *NLSet, attr *nlattr) int {
 }
 
 func SetElemParse2(nls *NLSet, attr *nlattr) int {
+	var rtype int
 	am := make(attrmap, 1)
 	e := &NLSetElem{}
 
@@ -293,13 +295,28 @@ func SetElemParse2(nls *NLSet, attr *nlattr) int {
 	}
 	if i, ok := am[NFTA_SET_ELEM_KEY]; ok {
 		//TODO: parse data
-		ret = 
+		rtype, ret = NftnlParseData(&e.Key, i)
+		if ret < 0 {
+			return ret
+		}
 		fmt.Println("case NFTA_SET_ELEM_KEY", i)
 		e.Flags |= (1 << NFTNL_SET_ELEM_KEY)
 	}
 	if i, ok := am[NFTA_SET_ELEM_DATA]; ok {
 		//TODO: parse data
+		rtype, ret = NftnlParseData(&e.Data, i)
+		if ret < 0 {
+			return ret
+		}
 		fmt.Println("case NFTA_SET_ELEM_DATA", i)
+		switch(rtype) {
+		case DATA_VERDICT:
+			e.Flags |= (1 << NFTNL_SET_ELEM_VERDICT)
+		case DATA_CHAIN:
+			e.Flags |= (1 << NFTNL_SET_ELEM_VERDICT) | (1 << NFTNL_SET_ELEM_CHAIN)
+		case DATA_VALUE:
+			e.Flags |= (1 << NFTNL_SET_ELEM_DATA)
+		}
 	}
 	if i, ok := am[NFTA_SET_ELEM_EXPR]; ok {
 		//TODO
